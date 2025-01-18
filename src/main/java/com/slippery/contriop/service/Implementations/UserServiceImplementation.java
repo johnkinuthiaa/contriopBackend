@@ -4,6 +4,9 @@ import com.slippery.contriop.dto.UserDto;
 import com.slippery.contriop.models.Users;
 import com.slippery.contriop.repository.UserRepository;
 import com.slippery.contriop.service.UserService;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,9 +18,11 @@ import java.util.Optional;
 public class UserServiceImplementation implements UserService {
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder =new BCryptPasswordEncoder(12);
+    private final AuthenticationManager authenticationManager;
 
-    public UserServiceImplementation(UserRepository repository) {
+    public UserServiceImplementation(UserRepository repository, AuthenticationManager authenticationManager) {
         this.repository = repository;
+        this.authenticationManager = authenticationManager;
     }
 
     @Override
@@ -52,7 +57,26 @@ public class UserServiceImplementation implements UserService {
 
     @Override
     public UserDto register(Users userDetails) {
-        return null;
+        UserDto response =new UserDto();
+        Optional<Users> user = Optional.ofNullable(repository.findByUsername(userDetails.getUsername()));
+        if(user.isEmpty()){
+            response.setMessage("User does not exist");
+            response.setStatusCode(200);
+            return response;
+        }
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(userDetails.getUsername(),userDetails.getPassword())
+        );
+        if(authentication.isAuthenticated()){
+            user.get().setLoggedIn(true);
+            repository.save(user.get());
+            response.setMessage("User logged in");
+            response.setStatusCode(200);
+        }else{
+            response.setMessage("User not authorized");
+            response.setStatusCode(401);
+        }
+        return response;
     }
 
     @Override
