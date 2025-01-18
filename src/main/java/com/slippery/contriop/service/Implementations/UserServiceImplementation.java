@@ -3,6 +3,7 @@ package com.slippery.contriop.service.Implementations;
 import com.slippery.contriop.dto.UserDto;
 import com.slippery.contriop.models.Users;
 import com.slippery.contriop.repository.UserRepository;
+import com.slippery.contriop.service.JwtService;
 import com.slippery.contriop.service.UserService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,14 +20,16 @@ public class UserServiceImplementation implements UserService {
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder =new BCryptPasswordEncoder(12);
     private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
 
-    public UserServiceImplementation(UserRepository repository, AuthenticationManager authenticationManager) {
+    public UserServiceImplementation(UserRepository repository, AuthenticationManager authenticationManager, JwtService jwtService) {
         this.repository = repository;
         this.authenticationManager = authenticationManager;
+        this.jwtService = jwtService;
     }
 
     @Override
-    public UserDto login(Users userDetails) {
+    public UserDto register(Users userDetails) {
         UserDto response =new UserDto();
         Optional<Users> existingByUsername = Optional.ofNullable(repository.findByUsername(userDetails.getUsername()));
         List<Users> existingByEmail= repository.findAll().stream()
@@ -39,7 +42,7 @@ public class UserServiceImplementation implements UserService {
             return response;
 
         }
-        if(existingByUsername.isEmpty()){
+        if(existingByUsername.isPresent()){
             response.setMessage("Username already exists! please use a unique name");
             response.setStatusCode(200);
             return response;
@@ -56,7 +59,7 @@ public class UserServiceImplementation implements UserService {
     }
 
     @Override
-    public UserDto register(Users userDetails) {
+    public UserDto login(Users userDetails) {
         UserDto response =new UserDto();
         Optional<Users> user = Optional.ofNullable(repository.findByUsername(userDetails.getUsername()));
         if(user.isEmpty()){
@@ -69,8 +72,10 @@ public class UserServiceImplementation implements UserService {
         );
         if(authentication.isAuthenticated()){
             user.get().setLoggedIn(true);
+            var token =jwtService.generateJwtToken(user.get().getUsername());
             repository.save(user.get());
             response.setMessage("User logged in");
+            response.setJwtToken(token);
             response.setStatusCode(200);
         }else{
             response.setMessage("User not authorized");
