@@ -38,13 +38,13 @@ public class UserServiceImplementation implements UserService {
 
         if(!existingByEmail.isEmpty()){
             response.setMessage("User email already exists! please use another email");
-            response.setStatusCode(200);
+            response.setStatusCode(400);
             return response;
 
         }
         if(existingByUsername.isPresent()){
             response.setMessage("Username already exists! please use a unique name");
-            response.setStatusCode(200);
+            response.setStatusCode(400);
             return response;
 
         }
@@ -64,7 +64,7 @@ public class UserServiceImplementation implements UserService {
         Optional<Users> user = Optional.ofNullable(repository.findByUsername(userDetails.getUsername()));
         if(user.isEmpty()){
             response.setMessage("User does not exist");
-            response.setStatusCode(200);
+            response.setStatusCode(400);
             return response;
         }
         Authentication authentication = authenticationManager.authenticate(
